@@ -1,20 +1,20 @@
 use std::{
     env,
-    net::{TcpListener},
+    net::{Ipv4Addr, SocketAddrV4, TcpListener},
     sync::{
-        LazyLock, Mutex,
-        atomic::{AtomicBool, AtomicUsize, Ordering},
+        atomic::{AtomicBool, AtomicU16, AtomicUsize, Ordering},
     },
 };
 
-use cruster::{router::{handle_connection}, thread_pool::ThreadPool};
+use cruster::{router::handle_connection, thread_pool::ThreadPool};
 
-static HOST: &str = "127.0.0.1:";
-static PORT: LazyLock<Mutex<u16>> = LazyLock::new(|| Mutex::new(8080));
-static THREAD_COUNT: LazyLock<Mutex<usize>> = LazyLock::new(|| Mutex::new(5));
-
+static HOST: &str = "127.0.0.1";
+static THREAD_COUNT: AtomicUsize = AtomicUsize::new(5);
+static PORT: AtomicU16 = AtomicU16::new(8080);
 static VISITS: AtomicUsize = AtomicUsize::new(0);
 static VERBOSE: AtomicBool = AtomicBool::new(false);
+
+
 
 fn main() {
     if let Err(err) = process_args() {
@@ -24,32 +24,29 @@ fn main() {
         return;
     }
 
-    let adress: String = HOST.to_owned() + PORT.lock().unwrap().to_string().as_str();
-    let threads = THREAD_COUNT.lock().unwrap();
+    port_verification();
 
-    if VERBOSE.load(Ordering::Relaxed) {
-        println!("Occupied adress: {}", adress);
-        println!("Occupied threads: {}", threads);
-    }
+    let adress: String = format!("{}:{}", HOST, PORT.load(Ordering::Relaxed));
+    let threads = THREAD_COUNT.load(Ordering::Relaxed);
+
+    println!("Occupied adress: {}", adress);
+    println!("Occupied threads: {}", threads);
 
     let listener = TcpListener::bind(adress).unwrap();
-    let tpool = ThreadPool::new(*threads,VERBOSE.load(Ordering::Relaxed));
+    let tpool = ThreadPool::new(threads, VERBOSE.load(Ordering::Relaxed));
 
     for stream in listener.incoming() {
         let stream = stream.unwrap();
 
         tpool.execute(|| {
-            handle_connection("public".to_string(),stream);
+            handle_connection("public".to_string(), stream);
         });
         if VERBOSE.load(Ordering::Relaxed) {
-            println!(
-                "Visits: {}",
-                VISITS.fetch_add(1, Ordering::AcqRel)
-            );
+            println!("Visits: {}", VISITS.fetch_add(1, Ordering::AcqRel));
         }
     }
 
-    if VERBOSE.load(Ordering::Relaxed){
+    if VERBOSE.load(Ordering::Relaxed) {
         println!("Shutting down")
     }
 }
@@ -77,12 +74,10 @@ fn process_args() -> Result<(), String> {
 
                 match flag.as_str() {
                     "p" => {
-                        let mut port = PORT.lock().unwrap();
-                        *port = num;
+                        PORT.store(num, Ordering::Relaxed);
                     }
                     "t" => {
-                        let mut thread = THREAD_COUNT.lock().unwrap();
-                        *thread = usize::from(num);
+                        THREAD_COUNT.store(usize::from(num), Ordering::Relaxed);
                     }
                     _ => {}
                 }
@@ -99,3 +94,17 @@ fn process_args() -> Result<(), String> {
     Ok(())
 }
 
+fn port_verification() {
+   while !is_port_free() {
+        let num = PORT.load(Ordering::Relaxed);
+        if VERBOSE.load(Ordering::Relaxed){
+            println!("Port {} was occupied, trying next one",num);
+        }
+        PORT.store(num+1, Ordering::Relaxed);
+   } 
+}
+
+fn is_port_free()-> bool{
+    let ipv4 = SocketAddrV4::new(Ipv4Addr::LOCALHOST, PORT.load(Ordering::Relaxed));
+    TcpListener::bind(ipv4).is_ok()
+}
