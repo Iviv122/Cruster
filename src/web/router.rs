@@ -74,7 +74,7 @@ pub fn handle_connection(folder: String, mut stream: TcpStream) -> () {
             "html" | "txt" => {
                 header = header.add("Content-Type: text/html");
             }
-            "jpeg" | "png" | "gif" => {
+            "jpg"| "jpeg" | "png" | "gif" => {
                 let binding = "Content-Type: image/".to_owned().add(ext);
                 header = header.add(binding.as_str());
             }

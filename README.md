@@ -1,4 +1,4 @@
 Cruster, simple multithread web server
 
 features:
-- Can host both html, 
+- Can host html,css,jpeg,png,gifs
