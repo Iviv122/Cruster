@@ -1,10 +1,9 @@
 use std::{
-    ffi::OsStr,
-    fs::{self, canonicalize, exists},
+    fs::{self, canonicalize},
     io::{BufRead, BufReader, Write},
     net::TcpStream,
     ops::Add,
-    path::{self, Path, PathBuf},
+    path::{Path},
 };
 
 pub struct Router {}
@@ -36,15 +35,13 @@ pub fn handle_connection(folder: String, mut stream: TcpStream) -> () {
         filename += ".html"
     }
 
-    // let can: Result<std::path::PathBuf, std::io::Error> = canonicalize(binding);
-
     let homedir = fs::canonicalize(folder.clone().as_str()).unwrap();
-    let homedir_path: &str = homedir.to_str().unwrap(); // let it be /home/username/public
+    let homedir_path: &str = homedir.to_str().unwrap();
 
-    // 
     let can: Result<std::path::PathBuf, std::io::Error> = canonicalize(folder.clone().add(filename.as_str()));
     let binding = can.unwrap_or_else(|_| homedir.clone());
     let can_s = binding.to_str().unwrap();
+    println!("{}",can_s);
 
     let diff = can_s.strip_prefix(homedir_path);
 
