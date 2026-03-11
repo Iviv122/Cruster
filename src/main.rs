@@ -2,6 +2,7 @@ use std::{
     env,
     net::{Ipv4Addr, SocketAddrV4, TcpListener},
     sync::{
+        LazyLock, Mutex,
         atomic::{AtomicBool, AtomicU16, AtomicUsize, Ordering},
     },
 };
@@ -14,7 +15,7 @@ static PORT: AtomicU16 = AtomicU16::new(8080);
 static VISITS: AtomicUsize = AtomicUsize::new(0);
 static VERBOSE: AtomicBool = AtomicBool::new(false);
 
-
+static FOLDER: LazyLock<Mutex<String>> = LazyLock::new(|| Mutex::new("public".to_string()));
 
 fn main() {
     if let Err(err) = process_args() {
@@ -39,7 +40,7 @@ fn main() {
         let stream = stream.unwrap();
 
         tpool.execute(|| {
-            handle_connection("public".to_string(), stream);
+            handle_connection(FOLDER.lock().unwrap().to_string(), stream);
         });
         if VERBOSE.load(Ordering::Relaxed) {
             println!("Visits: {}", VISITS.fetch_add(1, Ordering::AcqRel));
@@ -79,8 +80,17 @@ fn process_args() -> Result<(), String> {
                     "t" => {
                         THREAD_COUNT.store(usize::from(num), Ordering::Relaxed);
                     }
+
                     _ => {}
                 }
+            }
+            "f" => {
+                let value = args
+                    .next()
+                    .ok_or(format!("Expected folder name: {}", flag))?;
+
+                let mut folder = FOLDER.lock().unwrap();
+                *folder = value;                    
             }
             "v" => {
                 VERBOSE.store(true, std::sync::atomic::Ordering::Relaxed);
@@ -95,16 +105,16 @@ fn process_args() -> Result<(), String> {
 }
 
 fn port_verification() {
-   while !is_port_free() {
+    while !is_port_free() {
         let num = PORT.load(Ordering::Relaxed);
-        if VERBOSE.load(Ordering::Relaxed){
-            println!("Port {} was occupied, trying next one",num);
+        if VERBOSE.load(Ordering::Relaxed) {
+            println!("Port {} was occupied, trying next one", num);
         }
-        PORT.store(num+1, Ordering::Relaxed);
-   } 
+        PORT.store(num + 1, Ordering::Relaxed);
+    }
 }
 
-fn is_port_free()-> bool{
+fn is_port_free() -> bool {
     let ipv4 = SocketAddrV4::new(Ipv4Addr::LOCALHOST, PORT.load(Ordering::Relaxed));
     TcpListener::bind(ipv4).is_ok()
 }
