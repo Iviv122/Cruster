@@ -2,7 +2,10 @@ use std::{
     env, fs,
     io::{BufRead, BufReader, Write},
     net::{TcpListener, TcpStream},
-    sync::{LazyLock, Mutex},
+    sync::{
+        LazyLock, Mutex,
+        atomic::{AtomicBool, AtomicUsize, Ordering},
+    },
 };
 
 use Cruster::ThreadPool;
@@ -10,7 +13,8 @@ use Cruster::ThreadPool;
 static HOST: &str = "127.0.0.1:";
 static PORT: LazyLock<Mutex<u16>> = LazyLock::new(|| Mutex::new(8080));
 static THREAD_COUNT: LazyLock<Mutex<usize>> = LazyLock::new(|| Mutex::new(5));
-static VISITS: LazyLock<Mutex<usize>> = LazyLock::new(|| Mutex::new(0));
+static VISITS: AtomicUsize = AtomicUsize::new(0);
+static VERBOSE: AtomicBool = AtomicBool::new(false);
 
 fn main() {
     if let Err(err) = process_args() {
@@ -23,11 +27,13 @@ fn main() {
     let adress: String = HOST.to_owned() + PORT.lock().unwrap().to_string().as_str();
     let threads = THREAD_COUNT.lock().unwrap();
 
-    println!("Occupied adress: {}", adress);
-    println!("Occupied threads: {}", threads);
+    if VERBOSE.load(Ordering::Relaxed) {
+        println!("Occupied adress: {}", adress);
+        println!("Occupied threads: {}", threads);
+    }
 
     let listener = TcpListener::bind(adress).unwrap();
-    let tpool = ThreadPool::new(*threads);
+    let tpool = ThreadPool::new(*threads,VERBOSE.load(Ordering::Relaxed));
 
     for stream in listener.incoming() {
         let stream = stream.unwrap();
@@ -35,9 +41,12 @@ fn main() {
         tpool.execute(|| {
             handle_connection(stream);
         });
-        let mut vis = VISITS.lock().unwrap();
-        println!("Visits: {}", vis);
-        *vis = (*vis) + 1;
+        if VERBOSE.load(Ordering::Relaxed) {
+            println!(
+                "Visits: {}",
+                VISITS.fetch_add(1, Ordering::AcqRel)
+            );
+        }
     }
 
     println!("Shutting down")
@@ -45,8 +54,9 @@ fn main() {
 
 fn show_usage() -> () {
     println!("usage: cruster [OPTION]");
-    println!("p port_number");
-    println!("t threads_used");
+    println!("p port_number (standart: 8080, or any free)");
+    println!("t threads_used (standart: 5)");
+    println!("v verbose (standart: false)")
 }
 
 fn process_args() -> Result<(), String> {
@@ -74,6 +84,9 @@ fn process_args() -> Result<(), String> {
                     }
                     _ => {}
                 }
+            }
+            "v" => {
+                VERBOSE.store(true, std::sync::atomic::Ordering::Relaxed);
             }
 
             _ => {
