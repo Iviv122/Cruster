@@ -15,6 +15,7 @@ features:
 - controll port via cli
 - controll amount of threads avaiable for this app
 - automatically finds next port to use in case if given one is already occupied
+- you can change folder which will be used to serve data
 
 P.S
 

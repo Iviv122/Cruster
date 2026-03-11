@@ -56,7 +56,8 @@ fn show_usage() -> () {
     println!("usage: cruster [OPTION]");
     println!("p port_number (standart: 8080, or any free)");
     println!("t threads_used (standart: 5)");
-    println!("v verbose (standart: false)")
+    println!("v verbose (standart: false)");
+    println!("f folder (standart: 'public')");
 }
 
 fn process_args() -> Result<(), String> {
