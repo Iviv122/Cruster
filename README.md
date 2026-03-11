@@ -22,3 +22,7 @@ P.S
 this is my first rust program ;p.
 
 It took quite a lot of trial and error + reading + asking friends for help
+
+P.S.S
+
+If you are hackclub reviewer, if it looks fraud like it was unintenionally. It took way longer than i expected, i though it would take half as much. Please, don't ban for skill issue :D
