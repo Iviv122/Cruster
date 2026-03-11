@@ -1,5 +1,5 @@
 use std::{
-    fs::{self, canonicalize, read},
+    fs::{self, canonicalize},
     io::{BufRead, BufReader, Write},
     net::TcpStream,
     ops::Add,
@@ -48,7 +48,6 @@ pub fn handle_connection(folder: String, mut stream: TcpStream) -> () {
         canonicalize(folder.clone().add(filename.as_str()));
     let binding = can.unwrap_or_else(|_| homedir.clone());
     let can_s = binding.to_str().unwrap();
-    println!("{}", can_s);
 
     let diff = can_s.strip_prefix(homedir_path);
 
@@ -63,9 +62,8 @@ pub fn handle_connection(folder: String, mut stream: TcpStream) -> () {
     } else {
         let ext = file_extension(filename.as_str());
         let contents: Vec<u8> = match ext {
-            "html" | "txt" => fs::read(can_s).unwrap(),
             "jpeg" | "png" | "gif" => fs::read(can_s).unwrap(),
-            _ => Vec::new(),
+            _ => fs::read(can_s).unwrap(),
         };
 
         let length = contents.len();
@@ -79,6 +77,9 @@ pub fn handle_connection(folder: String, mut stream: TcpStream) -> () {
             "jpeg" | "png" | "gif" => {
                 let binding = "Content-Type: image/".to_owned().add(ext);
                 header = header.add(binding.as_str());
+            }
+            "css" => {
+                header = header.add("Content-Type: text/css");
             }
             _ => {}
         }
