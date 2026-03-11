@@ -1,16 +1,22 @@
 use std::{
-    fs::{self, canonicalize},
+    fs::{self, canonicalize, read},
     io::{BufRead, BufReader, Write},
     net::TcpStream,
     ops::Add,
-    path::{Path},
+    path::Path,
 };
 
 pub struct Router {}
 
 pub fn handle_connection(folder: String, mut stream: TcpStream) -> () {
     let buf_reader = BufReader::new(&stream);
-    let request_line = buf_reader.lines().next().unwrap().unwrap();
+
+    let request_line = buf_reader
+        .lines()
+        .next()
+        .transpose()
+        .unwrap_or(None)
+        .unwrap_or_default();
 
     let mut req = request_line.split(" ");
 
@@ -38,10 +44,11 @@ pub fn handle_connection(folder: String, mut stream: TcpStream) -> () {
     let homedir = fs::canonicalize(folder.clone().as_str()).unwrap();
     let homedir_path: &str = homedir.to_str().unwrap();
 
-    let can: Result<std::path::PathBuf, std::io::Error> = canonicalize(folder.clone().add(filename.as_str()));
+    let can: Result<std::path::PathBuf, std::io::Error> =
+        canonicalize(folder.clone().add(filename.as_str()));
     let binding = can.unwrap_or_else(|_| homedir.clone());
     let can_s = binding.to_str().unwrap();
-    println!("{}",can_s);
+    println!("{}", can_s);
 
     let diff = can_s.strip_prefix(homedir_path);
 
@@ -49,21 +56,47 @@ pub fn handle_connection(folder: String, mut stream: TcpStream) -> () {
         // bad file or doesn't exist
 
         let ff = format!("{folder}/404.html");
-        let contents =fs::read_to_string(ff).unwrap_or_else(|_| "No /404.html".to_string());
+        let contents = fs::read_to_string(ff).unwrap_or_else(|_| "No /404.html".to_string());
         let length = contents.len();
         let response = format!("{status_line}\r\nContent-Length: {length}\r\n\r\n{contents}");
         stream.write_all(response.as_bytes()).unwrap();
     } else {
-        // everything is ok
-
-        let contents = fs::read_to_string(can_s).unwrap_or_else(|_| "No /404.html".to_string());
+        let ext = file_extension(filename.as_str());
+        let contents: Vec<u8> = match ext {
+            "html" | "txt" => fs::read(can_s).unwrap(),
+            "jpeg" | "png" | "gif" => fs::read(can_s).unwrap(),
+            _ => Vec::new(),
+        };
 
         let length = contents.len();
-        let response = format!("{status_line}\r\nContent-Length: {length}\r\n\r\n{contents}");
-        stream.write_all(response.as_bytes()).unwrap();
+
+        let mut header: String = format!("{status_line}\r\nContent-Length: {length}\r\n");
+
+        match ext {
+            "html" | "txt" => {
+                header = header.add("Content-Type: text/html");
+            }
+            "jpeg" | "png" | "gif" => {
+                let binding = "Content-Type: image/".to_owned().add(ext);
+                header = header.add(binding.as_str());
+            }
+            _ => {}
+        }
+        header = header.add("\r\n\r\n");
+
+        stream.write_all(header.as_bytes()).unwrap();
+        stream.write_all(&contents).unwrap();
     }
 }
 
 fn has_extension(filename: &str) -> bool {
     !Path::new(filename).extension().is_none()
+}
+
+fn file_extension(filename: &str) -> &str {
+    Path::new(filename)
+        .extension()
+        .unwrap_or_default()
+        .to_str()
+        .unwrap_or_else(|| "")
 }
