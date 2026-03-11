@@ -1,10 +1,10 @@
 use std::{
-    fmt::format,
-    fs::{self, exists},
+    ffi::OsStr,
+    fs::{self, canonicalize, exists},
     io::{BufRead, BufReader, Write},
     net::TcpStream,
     ops::Add,
-    path,
+    path::{self, Path, PathBuf},
 };
 
 pub struct Router {}
@@ -28,25 +28,45 @@ pub fn handle_connection(folder: String, mut stream: TcpStream) -> () {
             filename = "405.html".to_string();
         }
     };
+
     if filename.chars().last().unwrap() == '/' {
         filename += "index.html";
+    } else if has_extension(filename.as_str()) {
     } else {
         filename += ".html"
     }
-    
-    let mut binding = folder.clone().add(filename.as_str()); // "public/wrong.html"
 
-    if !exists(binding.as_str()).unwrap() {
-        binding = folder.clone().add("/404.html"); // powinno być "public/404.html"
+    // let can: Result<std::path::PathBuf, std::io::Error> = canonicalize(binding);
+
+    let homedir = fs::canonicalize(folder.clone().as_str()).unwrap();
+    let homedir_path: &str = homedir.to_str().unwrap(); // let it be /home/username/public
+
+    // 
+    let can: Result<std::path::PathBuf, std::io::Error> = canonicalize(folder.clone().add(filename.as_str()));
+    let binding = can.unwrap_or_else(|_| homedir.clone());
+    let can_s = binding.to_str().unwrap();
+
+    let diff = can_s.strip_prefix(homedir_path);
+
+    if diff.is_none_or(|s| s.trim().is_empty()) {
+        // bad file or doesn't exist
+
+        let ff = format!("{folder}/404.html");
+        let contents =fs::read_to_string(ff).unwrap_or_else(|_| "No /404.html".to_string());
+        let length = contents.len();
+        let response = format!("{status_line}\r\nContent-Length: {length}\r\n\r\n{contents}");
+        stream.write_all(response.as_bytes()).unwrap();
+    } else {
+        // everything is ok
+
+        let contents = fs::read_to_string(can_s).unwrap_or_else(|_| "No /404.html".to_string());
+
+        let length = contents.len();
+        let response = format!("{status_line}\r\nContent-Length: {length}\r\n\r\n{contents}");
+        stream.write_all(response.as_bytes()).unwrap();
     }
-
-    let path: &str = binding.as_str(); // jest tak samo "public/wrong.html"
-
-    let contents = fs::read_to_string(path).unwrap_or_else(|_| "No 404.html".to_string());
-
-    let length = contents.len();
-    let response = format!("{status_line}\r\nContent-Length: {length}\r\n\r\n{contents}");
-    stream.write_all(response.as_bytes()).unwrap();
 }
 
-fn uknown_route() -> () {}
+fn has_extension(filename: &str) -> bool {
+    !Path::new(filename).extension().is_none()
+}
