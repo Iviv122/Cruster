@@ -1,5 +1,5 @@
 use std::{
-    convert, env, fs,
+    env, fs,
     io::{BufRead, BufReader, Write},
     net::{TcpListener, TcpStream},
     sync::{LazyLock, Mutex},
@@ -12,7 +12,9 @@ static PORT: LazyLock<Mutex<u16>> = LazyLock::new(|| Mutex::new(8080));
 static THREAD_COUNT: LazyLock<Mutex<usize>> = LazyLock::new(|| Mutex::new(5));
 
 fn main() {
-    if let Err(_) = process_args() {
+    if let Err(err) = process_args() {
+        println!("cruster: {}",err);
+        println!("");
         show_usage();
         return;
     }
@@ -20,8 +22,8 @@ fn main() {
     let adress: String = HOST.to_owned() + PORT.lock().unwrap().to_string().as_str();
     let threads = THREAD_COUNT.lock().unwrap();
 
-    println!("Occupied adress {}",adress);
-    println!("Occupied threads {}",threads);
+    println!("Occupied adress {}", adress);
+    println!("Occupied threads {}", threads);
 
     let listener = TcpListener::bind(adress).unwrap();
     let tpool = ThreadPool::new(*threads);
@@ -37,14 +39,18 @@ fn main() {
     println!("Shutting down")
 }
 
-fn show_usage() -> () {}
+fn show_usage() -> () {
+    println!("usage: cruster [OPTION]");
+    println!("-p port_number");
+    println!("-t threads_used");
+}
 
 fn process_args() -> Result<(), String> {
     let mut args = env::args().skip(1);
 
     while let Some(flag) = args.next() {
         match flag.as_str() {
-            "p" | "t" => {
+            "-p" | "-t" => {
                 let value = args
                     .next()
                     .ok_or(format!("Expected value after: {}", flag))?;
@@ -54,11 +60,11 @@ fn process_args() -> Result<(), String> {
                     .map_err(|_| format!("Invalid number: {}", value))?;
 
                 match flag.as_str() {
-                    "p" => {
+                    "-p" => {
                         let mut port = PORT.lock().unwrap();
                         *port = num;
                     }
-                    "t" => {
+                    "-t" => {
                         let mut thread = THREAD_COUNT.lock().unwrap();
                         *thread = usize::from(num);
                     }
