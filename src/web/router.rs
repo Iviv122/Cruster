@@ -33,16 +33,7 @@ pub fn handle_connection(folder: String, mut stream: TcpStream) -> () {
     } else {
         filename += ".html"
     }
-    /*
-    let mut binding = folder.clone().add(filename.as_str());
-
-    if !path::Path::new(binding.as_str()).exists(){
-        binding = folder.clone().add("/404.html");
-    }
-
-    let path: &str = binding.as_str();
-    let contents = fs::read_to_string(path).unwrap_or_else(|_| "No 404.html".to_string());
-    */
+    
     let mut binding = folder.clone().add(filename.as_str()); // "public/wrong.html"
 
     if !exists(binding.as_str()).unwrap() {
