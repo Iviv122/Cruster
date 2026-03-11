@@ -1,7 +1,10 @@
 use std::{
-    fs,
+    fmt::format,
+    fs::{self, exists},
     io::{BufRead, BufReader, Write},
     net::TcpStream,
+    ops::Add,
+    path,
 };
 
 pub struct Router {}
@@ -13,7 +16,7 @@ pub fn handle_connection(folder: String, mut stream: TcpStream) -> () {
     let mut req = request_line.split(" ");
 
     let request_type: &str = req.next().unwrap_or_else(|| "wrong type");
-    let mut filename: String = req.next().unwrap_or_else(|| "404.html").to_string();
+    let mut filename: String = req.next().unwrap_or_else(|| "404").to_string();
 
     let status_line: &str;
     match request_type {
@@ -27,12 +30,28 @@ pub fn handle_connection(folder: String, mut stream: TcpStream) -> () {
     };
     if filename.chars().last().unwrap() == '/' {
         filename += "index.html";
-    }else{
+    } else {
         filename += ".html"
     }
+    /*
+    let mut binding = folder.clone().add(filename.as_str());
 
-    let contents = fs::read_to_string(folder + filename.as_str())
-        .unwrap_or_else(|_| "No content file somehow".to_string());
+    if !path::Path::new(binding.as_str()).exists(){
+        binding = folder.clone().add("/404.html");
+    }
+
+    let path: &str = binding.as_str();
+    let contents = fs::read_to_string(path).unwrap_or_else(|_| "No 404.html".to_string());
+    */
+    let mut binding = folder.clone().add(filename.as_str()); // "public/wrong.html"
+
+    if !exists(binding.as_str()).unwrap() {
+        binding = folder.clone().add("/404.html"); // powinno być "public/404.html"
+    }
+
+    let path: &str = binding.as_str(); // jest tak samo "public/wrong.html"
+
+    let contents = fs::read_to_string(path).unwrap_or_else(|_| "No 404.html".to_string());
 
     let length = contents.len();
     let response = format!("{status_line}\r\nContent-Length: {length}\r\n\r\n{contents}");
