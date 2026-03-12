@@ -1,6 +1,6 @@
 use std::{
     env,
-    net::{Ipv4Addr, Ipv6Addr, SocketAddrV4, SocketAddrV6, TcpListener},
+    net::{Ipv6Addr, SocketAddrV6, TcpListener},
     sync::{
         LazyLock, Mutex,
         atomic::{AtomicBool, AtomicU16, AtomicUsize, Ordering},
@@ -41,7 +41,7 @@ fn main() {
         let stream = stream.unwrap();
 
         tpool.execute(|| {
-            handle_connection(FOLDER.lock().unwrap().to_string(), stream);
+            handle_connection(FOLDER.lock().unwrap().to_string(), stream,VERBOSE.load(Ordering::Relaxed));
         });
         if VERBOSE.load(Ordering::Relaxed) {
             println!("Visits: {}", VISITS.fetch_add(1, Ordering::AcqRel));

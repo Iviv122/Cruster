@@ -8,7 +8,7 @@ use std::{
 
 pub struct Router {}
 
-pub fn handle_connection(folder: String, mut stream: TcpStream) -> () {
+pub fn handle_connection(folder: String, mut stream: TcpStream,verbose: bool) -> () {
     let buf_reader = BufReader::new(&stream);
 
     let request_line = buf_reader
@@ -46,8 +46,10 @@ pub fn handle_connection(folder: String, mut stream: TcpStream) -> () {
 
     let can: Result<std::path::PathBuf, std::io::Error> =
         canonicalize(folder.clone().add(filename.as_str()));
+
     let binding = can.unwrap_or_else(|_| homedir.clone());
     let can_s = binding.to_str().unwrap();
+    println!("{}",can_s);
 
     let diff = can_s.strip_prefix(homedir_path);
 
