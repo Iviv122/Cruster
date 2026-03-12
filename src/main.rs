@@ -9,7 +9,7 @@ use std::{
 
 use cruster::{router::handle_connection, thread_pool::ThreadPool};
 
-static HOST: &str = "127.0.0.1";
+static HOST: &str = "0.0.0.0";
 static THREAD_COUNT: AtomicUsize = AtomicUsize::new(5);
 static PORT: AtomicU16 = AtomicU16::new(8080);
 static VISITS: AtomicUsize = AtomicUsize::new(0);
