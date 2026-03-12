@@ -1,6 +1,6 @@
 use std::{
     env,
-    net::{Ipv4Addr, SocketAddrV4, TcpListener},
+    net::{Ipv4Addr, Ipv6Addr, SocketAddrV4, SocketAddrV6, TcpListener},
     sync::{
         LazyLock, Mutex,
         atomic::{AtomicBool, AtomicU16, AtomicUsize, Ordering},
@@ -33,7 +33,8 @@ fn main() {
     println!("Occupied adress: {}", adress);
     println!("Occupied threads: {}", threads);
 
-    let listener = TcpListener::bind(adress).unwrap();
+    let addr = SocketAddrV6::new(Ipv6Addr::UNSPECIFIED, PORT.load(Ordering::Relaxed), 0, 0);
+    let listener = TcpListener::bind(addr).unwrap();
     let tpool = ThreadPool::new(threads, VERBOSE.load(Ordering::Relaxed));
 
     for stream in listener.incoming() {
@@ -116,6 +117,6 @@ fn port_verification() {
 }
 
 fn is_port_free() -> bool {
-    let ipv4 = SocketAddrV4::new(Ipv4Addr::LOCALHOST, PORT.load(Ordering::Relaxed));
-    TcpListener::bind(ipv4).is_ok()
+    let addr = SocketAddrV6::new(Ipv6Addr::LOCALHOST, PORT.load(Ordering::Relaxed), 0, 0);
+    TcpListener::bind(addr).is_ok()
 }
