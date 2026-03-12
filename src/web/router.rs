@@ -75,8 +75,9 @@ pub fn handle_connection(folder: String, mut stream: TcpStream,verbose: bool) ->
         let mut header: String = format!("{status_line}\r\nContent-Length: {length}\r\n");
 
         match ext {
-            "html" | "txt" => {
-                header = header.add("Content-Type: text/html");
+            "html" | "txt" | "js" => {
+                let binding = "Content-Type: text/".to_owned().add(ext);
+                header = header.add(binding.as_str());
             }
             "jpg"| "jpeg" | "png" | "gif" => {
                 let binding = "Content-Type: image/".to_owned().add(ext);
