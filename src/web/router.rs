@@ -49,7 +49,9 @@ pub fn handle_connection(folder: String, mut stream: TcpStream,verbose: bool) ->
 
     let binding = can.unwrap_or_else(|_| homedir.clone());
     let can_s = binding.to_str().unwrap();
-    println!("{}",can_s);
+    if verbose{
+        println!("{}",can_s);
+    }
 
     let diff = can_s.strip_prefix(homedir_path);
 
